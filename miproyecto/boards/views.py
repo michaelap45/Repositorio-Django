@@ -17,24 +17,37 @@ class BoardListView(ListView):
     template_name = 'home.html'
 
 
-def board_topics(request, pk):
-    board = get_object_or_404(Board, pk=pk)
-    queryset = board.topics.order_by('-last_updated').annotate(replies=Count('posts') - 1)
-    page = request.GET.get('page', 1)
+class TopicListView(ListView):
+    model = Topic
+    context_object_name = 'topics'
+    template_name = 'topics.html'
+    paginate_by = 20
 
-    paginator = Paginator(queryset, 20)
+    def get_context_data(self, **kwargs):
+        kwargs['board'] = self.board
+        return super().get_context_data(**kwargs)
 
-    try:
-        topics = paginator.page(page)
-    except PageNotAnInteger:
-        #volver para la primera pagina
-        topics = paginator.page(1)
-    except EmptyPage:
-        #para volver a la ultima pagina 
-        topics = paginator.page(paginator.num_pages)
+    def get_queryset(self):
+        self.board = get_object_or_404(Board, pk=self.kwargs.get('pk'))
+        queryset = self.board.topics.order_by('-last_updated').annotate(replies=Count('posts') - 1)
+        return queryset
 
-    return render(request, 'topics.html', {'board': board, 'topics': topics})
+class PostListView(ListView):
+    model = Post
+    context_object_name = 'posts'
+    template_name = 'topic_posts.html'
+    paginate_by = 3
 
+    def get_context_data(self, **kwargs):
+        self.topic.views += 1
+        self.topic.save()
+        kwargs['topic'] = self.topic
+        return super().get_context_data(**kwargs)
+
+    def get_queryset(self):
+        self.topic = get_object_or_404(Topic, board__pk=self.kwargs.get('pk'), pk=self.kwargs.get('topic_pk'))
+        queryset = self.topic.posts.order_by('created_at')
+        return queryset
 
 @login_required
 def new_topic(request, pk):
