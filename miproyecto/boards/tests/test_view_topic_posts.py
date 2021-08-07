@@ -21,3 +21,11 @@ class TopicPostsTests(TestCase):
     def test_view_function(self):
         view = resolve('/boards/1/topics/1/')
         self.assertEquals(view.func.view_class, PostListView)
+    
+    def test_redirection(self):
+        '''
+        A valid form submission should redirect the user
+        '''
+        url = reverse('topic_posts', kwargs={'pk': self.board.pk, 'topic_pk': self.topic.pk})
+        topic_posts_url = '{url}?page=1#2'.format(url=url)
+        self.assertRedirects(self.response, topic_posts_url)
